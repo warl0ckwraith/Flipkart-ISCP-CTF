@@ -1,3 +1,7 @@
+##Author
+
+Registered CTFd User Name: sanidhyasoni02
+
 ## What It Does
 Built for Flipkart ISCP CTF Challenge, this script cleans sensitive data from a CSV file.
 
@@ -25,4 +29,5 @@ python3 detector_sanidhya_soni.py iscp_pii_dataset.csv
 ## Deployment Plan
 
 Check the file [Deployment.md](Deployment.md) for the deployment plan.
+
 
