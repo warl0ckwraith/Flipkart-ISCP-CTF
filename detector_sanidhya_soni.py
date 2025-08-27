@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-Author: Sanidhya Soni [sanidhyasoni02@gmail.com]
+Author: Sanidhya Soni [sanidhyasoni02 on CTFd]
 """
 
 import csv
@@ -20,42 +20,42 @@ class PIIDetectorMasker:
         self.full_name_regex = re.compile(r'^[A-Za-z]+\s+[A-Za-z]+.*$')
 
         self.address_indicators = {
-            'street', 'road', 'rd', 'st', 'avenue', 'ave', 'lane', 'ln', 'block', 
-            'apt', 'apartment', 'floor', 'building', 'house', 'complex', 'nagar', 
-            'colony', 'society', 'vihar', 'enclave', 'sector', 'phase', 'chawl', 
-            'marg', 'bagh', 'gali', 'galli', 'chowk', 'layout', 'puram', 'puri', 
+            'street', 'road', 'rd', 'st', 'avenue', 'ave', 'lane', 'ln', 'block',
+            'apt', 'apartment', 'floor', 'building', 'house', 'complex', 'nagar',
+            'colony', 'society', 'vihar', 'enclave', 'sector', 'phase', 'chawl',
+            'marg', 'bagh', 'gali', 'galli', 'chowk', 'layout', 'puram', 'puri',
             'wadi', 'wada', 'pada', 'village', 'gram', 'gaon'
         }
         
         self.standalone_rules = [
-            {'type': 'email', 'detector': self.is_email, 'masker': self.mask_email},
-            {'type': 'upi', 'detector': self.is_upi_id, 'masker': self.mask_upi},
+            {'type': 'email', 'detector': self.email_check, 'masker': self.mask_email},
+            {'type': 'upi', 'detector': self.upi_check, 'masker': self.mask_upi},
             {'type': 'phone', 'detector': self.phone_regex.search, 'masker': self.mask_phone},
             {'type': 'passport', 'detector': self.passport_regex.match, 'masker': self.mask_passport},
         ]
 
 
         self.raw_string_rules = [
-            (self.email_regex, self.is_email, self.mask_email),
-            (self.upi_regex, self.is_upi_id, self.mask_upi),
+            (self.email_regex, self.email_check, self.mask_email),
+            (self.upi_regex, self.upi_check, self.mask_upi),
             (self.aadhar_regex, lambda s: len(re.sub(r'\D', '', s)) == 12, self.mask_aadhar),
             (self.phone_regex, lambda s: True, self.mask_phone),
             (self.passport_regex, lambda s: True, self.mask_passport),
         ]
 
-    def is_upi_id(self, value):
+    def upi_check(self, value):
         return bool(self.upi_regex.match(value))
 
-    def is_email(self, value):
+    def email_check(self, value):
         return bool(self.email_regex.match(value))
 
-    def is_full_name(self, value):
+    def full_name_check(self, value):
         if not isinstance(value, str):
             return False
         words = value.strip().split()
         return len(words) >= 2 and all(word.replace('.', '').isalpha() for word in words if word)
 
-    def is_address(self, value):
+    def address_check(self, value):
         if not isinstance(value, str):
             return False
         value_lower = value.lower()
@@ -130,7 +130,7 @@ class PIIDetectorMasker:
             key_lower = key.lower()
             value = value.strip()
             
-            if 'name' in key_lower and self.is_full_name(value):
+            if 'name' in key_lower and self.full_name_check(value):
                 combinatorial_elements['name'] = {'key': key, 'original': value, 'masked': self.mask_name(value)}
             elif key_lower == 'first_name' and 'last_name' in data and isinstance(data.get('last_name'), str):
                 last_name = data.get('last_name', '').strip()
@@ -141,9 +141,9 @@ class PIIDetectorMasker:
                         'masked_first': self.mask_name(value),
                         'masked_last': self.mask_name(last_name)
                     }
-            elif self.is_email(value):
+            elif self.email_check(value):
                 combinatorial_elements['email'] = {'key': key, 'original': value, 'masked': self.mask_email(value)}
-            elif self.is_address(value):
+            elif self.address_check(value):
                 combinatorial_elements['address'] = {'key': key, 'original': value, 'masked': '[REDACTED_ADDRESS]'}
             elif key_lower in ['ip_address', 'ip']:
                 combinatorial_elements['ip_address'] = {'key': key, 'original': value, 'masked': '[REDACTED_IP]'}
@@ -152,7 +152,7 @@ class PIIDetectorMasker:
         
         return combinatorial_elements
 
-    def process_json_string(self, json_str):
+    def redact_pii_in_json(self, json_str):
         try:
             data = json.loads(json_str)
         except json.JSONDecodeError:
@@ -186,7 +186,7 @@ class PIIDetectorMasker:
         
         return json.dumps(masked_data), standalone_pii_found or combinatorial_pii_found
 
-    def process_csv_file(self, input_file, output_file):
+    def redact_pii_from_csv(self, input_file, output_file):
         try:
             with open(input_file, 'r', newline='', encoding='utf-8') as infile, \
                  open(output_file, 'w', newline='', encoding='utf-8') as outfile:
@@ -211,7 +211,7 @@ class PIIDetectorMasker:
                         print(f"Warning: Skipping row {row_num} - insufficient columns", file=sys.stderr)
                         continue
                     
-                    masked_json, is_pii = self.process_json_string(row[1])
+                    masked_json, is_pii = self.redact_pii_in_json(row[1])
                     writer.writerow([row[0], masked_json, is_pii])
                 
                 return True
@@ -237,7 +237,7 @@ def main():
     output_file = "redacted_output_sanidhya_soni.csv"
     detector = PIIDetectorMasker()
     
-    if detector.process_csv_file(input_file, output_file):
+    if detector.redact_pii_from_csv(input_file, output_file):
         detector.print_summary(output_file)
     else:
         print("Processing failed. Please check the input file and try again.", file=sys.stderr)
