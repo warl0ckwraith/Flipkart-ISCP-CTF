@@ -1,5 +1,5 @@
 ## What It Does
-This script is a command-line tool that cleans sensitive data from a CSV file. Built for Flipkart ISCP CTF Challenge.
+Built for Flipkart ISCP CTF Challenge, this script cleans sensitive data from a CSV file.
 
 It reads a file where each row contains a JSON string and carefully scans this data for **Personally Identifiable Information (PII)** like:
 
@@ -25,3 +25,4 @@ python3 detector_sanidhya_soni.py iscp_pii_dataset.csv
 ## Deployment Plan
 
 Check the file [Deployment.md](Deployment.md) for the deployment plan.
+
